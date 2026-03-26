@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-
+import { Navigate, useNavigate } from "react-router-dom";
 const style = `
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600&display=swap');
   * { box-sizing: border-box; }
@@ -85,7 +85,12 @@ const style = `
 `;
 
 const INITIAL_MESSAGES = [
-  { id: 1, role: "jarvis", text: "Good day. I am J.A.R.V.I.S — Just A Rather Very Intelligent System. All core systems are online and operating at full capacity. How may I assist you today?", time: "09:41" },
+  {
+    id: 1,
+    role: "jarvis",
+    text: "Good day. I am J.A.R.V.I.S — Just A Rather Very Intelligent System. All core systems are online and operating at full capacity. How may I assist you today?",
+    time: "09:41",
+  },
 ];
 
 const SAMPLE_CHATS = [
@@ -96,9 +101,15 @@ const SAMPLE_CHATS = [
   { id: 5, title: "Neural Network Update", time: "Mar 22" },
 ];
 
-const SUGGESTIONS = ["Run system diagnostics", "Analyze threat levels", "Show power grid status", "Brief me on latest intel"];
+const SUGGESTIONS = [
+  "Run system diagnostics",
+  "Analyze threat levels",
+  "Show power grid status",
+  "Brief me on latest intel",
+];
 
 export default function JarvisChat() {
+  const navigate = useNavigate()
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -107,29 +118,51 @@ export default function JarvisChat() {
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isTyping]);
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
 
-  const getTime = () => new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const getTime = () =>
+    new Date().toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
 
   const sendMessage = (text) => {
     const msg = text || input.trim();
     if (!msg) return;
-    setMessages((prev) => [...prev, { id: Date.now(), role: "user", text: msg, time: getTime() }]);
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), role: "user", text: msg, time: getTime() },
+    ]);
     setInput("");
     setIsTyping(true);
     setTimeout(() => {
       setIsTyping(false);
-      setMessages((prev) => [...prev, { id: Date.now() + 1, role: "jarvis", text: "Understood. I am processing your request now. All relevant data streams have been cross-referenced and analyzed. Please stand by while I compile the optimal response for your query.", time: getTime() }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          role: "jarvis",
+          text: "Understood. I am processing your request now. All relevant data streams have been cross-referenced and analyzed. Please stand by while I compile the optimal response for your query.",
+          time: getTime(),
+        },
+      ]);
     }, 1800);
   };
 
-  const handleKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+  const handleKey = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
 
   return (
     <>
-    //This is the core Style of the chatui
+      //This is the core Style of the chatui
       <style>{style}</style>
-      
       <div className="jarvis-bg flex h-screen w-screen overflow-hidden">
         <div className="grid-bg" />
         <div className="center-glow" />
@@ -137,8 +170,14 @@ export default function JarvisChat() {
 
         {/* SIDEBAR */}
         {sidebarOpen && (
-          <div className="sidebar flex flex-col flex-shrink-0 h-full relative z-10" style={{ width: 256 }}>
-            <div className="px-5 py-5 relative" style={{ borderBottom: "1px solid rgba(0,212,255,0.1)" }}>
+          <div
+            className="sidebar flex flex-col flex-shrink-0 h-full relative z-10"
+            style={{ width: 256 }}
+          >
+            <div
+              className="px-5 py-5 relative"
+              style={{ borderBottom: "1px solid rgba(0,212,255,0.1)" }}
+            >
               <div className="corner-decoration corner-tl" />
               <div className="flex items-center gap-3 mb-1">
                 <div className="orb-container">
@@ -154,7 +193,10 @@ export default function JarvisChat() {
             </div>
 
             <div className="px-4 py-4">
-              <button className="new-chat-btn w-full py-2.5 px-3 rounded-sm flex items-center justify-center gap-2" onClick={() => setMessages(INITIAL_MESSAGES)}>
+              <button
+                className="new-chat-btn w-full py-2.5 px-3 rounded-sm flex items-center justify-center gap-2"
+                onClick={() => setMessages(INITIAL_MESSAGES)}
+              >
                 <span className="text-lg leading-none">+</span>
                 <span>NEW SESSION</span>
               </button>
@@ -164,9 +206,27 @@ export default function JarvisChat() {
               <div className="section-label mb-3">// SESSIONS</div>
               <div className="flex flex-col gap-1">
                 {SAMPLE_CHATS.map((c) => (
-                  <button key={c.id} className={`chat-btn px-3 py-2.5 rounded-sm ${activeChat === c.id ? "active" : ""}`} onClick={() => setActiveChat(c.id)}>
-                    <div style={{ fontSize: 13, fontWeight: 500 }} className="truncate">{c.title}</div>
-                    <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2, letterSpacing: "0.05em" }}>{c.time}</div>
+                  <button
+                    key={c.id}
+                    className={`chat-btn px-3 py-2.5 rounded-sm ${activeChat === c.id ? "active" : ""}`}
+                    onClick={() => setActiveChat(c.id)}
+                  >
+                    <div
+                      style={{ fontSize: 13, fontWeight: 500 }}
+                      className="truncate"
+                    >
+                      {c.title}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "var(--text-dim)",
+                        marginTop: 2,
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      {c.time}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -174,13 +234,40 @@ export default function JarvisChat() {
 
             <div className="flex-1" />
 
-            <div className="px-4 py-4" style={{ borderTop: "1px solid rgba(0,212,255,0.1)" }}>
+            <div
+              className="px-4 py-4"
+              style={{ borderTop: "1px solid rgba(0,212,255,0.1)" }}
+            >
               <div className="section-label mb-3">// SYSTEM STATUS</div>
               <div className="flex flex-col gap-2">
-                {[["CORE TEMP", "36.2°C"], ["UPTIME", "99.97%"], ["MEMORY", "12.4 GB"]].map(([label, val]) => (
-                  <div key={label} className="flex justify-between items-center">
-                    <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.1em" }}>{label}</span>
-                    <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 10, color: "var(--cyan)" }}>{val}</span>
+                {[
+                  ["CORE TEMP", "36.2°C"],
+                  ["UPTIME", "99.97%"],
+                  ["MEMORY", "12.4 GB"],
+                ].map(([label, val]) => (
+                  <div
+                    key={label}
+                    className="flex justify-between items-center"
+                  >
+                    <span
+                      style={{
+                        fontFamily: "'Rajdhani', sans-serif",
+                        fontSize: 11,
+                        color: "var(--text-dim)",
+                        letterSpacing: "0.1em",
+                      }}
+                    >
+                      {label}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "'Orbitron', monospace",
+                        fontSize: 10,
+                        color: "var(--cyan)",
+                      }}
+                    >
+                      {val}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -193,19 +280,50 @@ export default function JarvisChat() {
           {/* Topbar */}
           <div className="topbar px-5 py-3 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-4">
-              <button onClick={() => setSidebarOpen((v) => !v)} style={{ background: "transparent", border: "1px solid var(--cyan-border)", color: "var(--text-dim)", cursor: "pointer", padding: "4px 10px", fontFamily: "'Orbitron', monospace", fontSize: 10, letterSpacing: "0.1em" }}>
+              <button
+                onClick={() => setSidebarOpen((v) => !v)}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--cyan-border)",
+                  color: "var(--text-dim)",
+                  cursor: "pointer",
+                  padding: "4px 10px",
+                  fontFamily: "'Orbitron', monospace",
+                  fontSize: 10,
+                  letterSpacing: "0.1em",
+                }}
+              >
                 {sidebarOpen ? "◀" : "▶"}
               </button>
-              <div style={{ fontFamily: "'Orbitron', monospace", fontSize: 13, color: "var(--cyan)", letterSpacing: "0.2em", textShadow: "0 0 15px rgba(0,212,255,0.5)" }}>J.A.R.V.I.S</div>
+              <div
+                style={{
+                  fontFamily: "'Orbitron', monospace",
+                  fontSize: 13,
+                  color: "var(--cyan)",
+                  letterSpacing: "0.2em",
+                  textShadow: "0 0 15px rgba(0,212,255,0.5)",
+                }}
+              >
+                J.A.R.V.I.S
+              </div>
               <div className="flex items-center gap-2">
                 <div className="status-dot" />
-                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.15em" }}>ALL SYSTEMS NOMINAL</span>
+                <span
+                  style={{
+                    fontFamily: "'Rajdhani', sans-serif",
+                    fontSize: 11,
+                    color: "var(--text-dim)",
+                    letterSpacing: "0.15em",
+                  }}
+                >
+                  ALL SYSTEMS NOMINAL
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {["ANALYTICS", "SETTINGS", "SECURITY"].map((label) => (
-                <div key={label} className="metric-badge">{label}</div>
-              ))}
+              <div className="metric-badge hover:cursor-pointer chat-btn ">ANALYTICS</div>
+              <div className="metric-badge hover:cursor-pointer chat-btn" onClick={()=>navigate("/setting")}>SETTINGS</div>
+              <div className="metric-badge hover:cursor-pointer chat-btn ">SECURITY</div>
             </div>
           </div>
 
@@ -213,14 +331,44 @@ export default function JarvisChat() {
           <div className="chat-area flex-1 overflow-y-auto px-6 py-6">
             <div className="max-w-3xl mx-auto flex flex-col gap-5">
               {messages.map((msg) => (
-                <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-                  {msg.role === "jarvis" ? <div className="avatar-jarvis">JV</div> : <div className="avatar-user">U</div>}
-                  <div className={`flex flex-col gap-1 max-w-lg ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                    <div style={{ fontFamily: "'Orbitron', monospace", fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.15em" }}>
-                      {msg.role === "user" ? "OPERATOR" : "J.A.R.V.I.S"} · {msg.time}
+                <div
+                  key={msg.id}
+                  className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+                >
+                  {msg.role === "jarvis" ? (
+                    <div className="avatar-jarvis">JV</div>
+                  ) : (
+                    <div className="avatar-user">U</div>
+                  )}
+                  <div
+                    className={`flex flex-col gap-1 max-w-lg ${msg.role === "user" ? "items-end" : "items-start"}`}
+                  >
+                    <div
+                      style={{
+                        fontFamily: "'Orbitron', monospace",
+                        fontSize: 9,
+                        color: "var(--text-dim)",
+                        letterSpacing: "0.15em",
+                      }}
+                    >
+                      {msg.role === "user" ? "OPERATOR" : "J.A.R.V.I.S"} ·{" "}
+                      {msg.time}
                     </div>
-                    <div className={`${msg.role === "user" ? "msg-user" : "msg-jarvis"} px-4 py-3 rounded-sm leading-relaxed relative`}>
-                      {msg.role === "jarvis" && (<><div className="corner-decoration corner-tl" style={{ width: 7, height: 7 }} /><div className="corner-decoration corner-br" style={{ width: 7, height: 7 }} /></>)}
+                    <div
+                      className={`${msg.role === "user" ? "msg-user" : "msg-jarvis"} px-4 py-3 rounded-sm leading-relaxed relative`}
+                    >
+                      {msg.role === "jarvis" && (
+                        <>
+                          <div
+                            className="corner-decoration corner-tl"
+                            style={{ width: 7, height: 7 }}
+                          />
+                          <div
+                            className="corner-decoration corner-br"
+                            style={{ width: 7, height: 7 }}
+                          />
+                        </>
+                      )}
                       {msg.text}
                     </div>
                   </div>
@@ -231,9 +379,20 @@ export default function JarvisChat() {
                 <div className="flex gap-3 items-start">
                   <div className="avatar-jarvis">JV</div>
                   <div className="flex flex-col gap-1">
-                    <div style={{ fontFamily: "'Orbitron', monospace", fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.15em" }}>J.A.R.V.I.S · PROCESSING</div>
+                    <div
+                      style={{
+                        fontFamily: "'Orbitron', monospace",
+                        fontSize: 9,
+                        color: "var(--text-dim)",
+                        letterSpacing: "0.15em",
+                      }}
+                    >
+                      J.A.R.V.I.S · PROCESSING
+                    </div>
                     <div className="msg-jarvis px-4 py-3 rounded-sm flex items-center gap-2">
-                      <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
+                      <div className="typing-dot" />
+                      <div className="typing-dot" />
+                      <div className="typing-dot" />
                     </div>
                   </div>
                 </div>
@@ -249,7 +408,13 @@ export default function JarvisChat() {
                 <div className="section-label mb-2">// SUGGESTED COMMANDS</div>
                 <div className="flex flex-wrap gap-2">
                   {SUGGESTIONS.map((s) => (
-                    <button key={s} className="capability-tag rounded-sm" onClick={() => sendMessage(s)}>{s}</button>
+                    <button
+                      key={s}
+                      className="capability-tag rounded-sm"
+                      onClick={() => sendMessage(s)}
+                    >
+                      {s}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -260,14 +425,49 @@ export default function JarvisChat() {
           <div className="px-6 pb-5 flex-shrink-0">
             <div className="max-w-3xl mx-auto">
               <div className="input-wrapper rounded-sm p-3 flex items-end gap-3 relative">
-                <div className="corner-decoration corner-tl" /><div className="corner-decoration corner-tr" />
-                <div className="corner-decoration corner-bl" /><div className="corner-decoration corner-br" />
-                <textarea ref={inputRef} className="chat-input" placeholder="Enter command or query..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKey} rows={1} style={{ maxHeight: 120, overflowY: "auto" }} />
-                <button className="send-btn px-4 py-2 rounded-sm flex-shrink-0" onClick={() => sendMessage()} disabled={!input.trim() || isTyping}>SEND ▶</button>
+                <div className="corner-decoration corner-tl" />
+                <div className="corner-decoration corner-tr" />
+                <div className="corner-decoration corner-bl" />
+                <div className="corner-decoration corner-br" />
+                <textarea
+                  ref={inputRef}
+                  className="chat-input"
+                  placeholder="Enter command or query..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKey}
+                  rows={1}
+                  style={{ maxHeight: 120, overflowY: "auto" }}
+                />
+                <button
+                  className="send-btn px-4 py-2 rounded-sm flex-shrink-0"
+                  onClick={() => sendMessage()}
+                  disabled={!input.trim() || isTyping}
+                >
+                  SEND ▶
+                </button>
               </div>
               <div className="flex justify-between mt-2 px-1">
-                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.1em" }}>SHIFT+ENTER for new line · ENTER to transmit</span>
-                <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.1em" }}>ENC: AES-256</span>
+                <span
+                  style={{
+                    fontFamily: "'Rajdhani', sans-serif",
+                    fontSize: 11,
+                    color: "var(--text-dim)",
+                    letterSpacing: "0.1em",
+                  }}
+                >
+                  SHIFT+ENTER for new line · ENTER to transmit
+                </span>
+                <span
+                  style={{
+                    fontFamily: "'Orbitron', monospace",
+                    fontSize: 9,
+                    color: "var(--text-dim)",
+                    letterSpacing: "0.1em",
+                  }}
+                >
+                  ENC: AES-256
+                </span>
               </div>
             </div>
           </div>

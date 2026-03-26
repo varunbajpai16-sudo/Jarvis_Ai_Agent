@@ -1,12 +1,17 @@
 import { User } from '../models/user.models.js'
 import ApiError from '../utils/ApiError.utils.js'
 import ApiResponse from '../utils/ApiResponse.utils.js'
-const handleAuth = async (req, res) => {
+
+
+const RegisterUser = async (req, res) => {
+  if (!req.auth?.sub) {
+    throw new ApiError(401, 'Unauthorized')
+  }
+
   const { sub } = req.auth
   const { email, name } = req.body
 
-  const provider = sub.split('|')[0]
-  const providerId = sub.split('|')[1]
+  const [provider, providerId] = sub.split('|')
 
   if (!providerId) {
     throw new ApiError(400, 'ProviderId Not Found!')
@@ -14,16 +19,20 @@ const handleAuth = async (req, res) => {
 
   let user = await User.findOne({ providerId })
 
-  if (!user) {
-    user = await User.create({
-      email,
-      name,
-      provider,
-      providerId,
-    })
+  if (user) {
+    throw new ApiError(409, 'User already exists')
   }
 
-  res.status(200).json(new ApiResponse(200, 'User Created Sucessfully', user))
+  user = await User.create({
+    email,
+    name,
+    provider,
+    providerId,
+  })
+
+  return res
+    .status(201)
+    .json(new ApiResponse(201, 'User Created Successfully', user))
 }
 
-export { handleAuth }
+export { RegisterUser }
