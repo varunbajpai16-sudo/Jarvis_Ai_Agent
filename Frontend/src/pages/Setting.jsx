@@ -1,1275 +1,683 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-/* ── Tailwind does not include all arbitrary values at runtime, so we keep
-   the few custom CSS variables and keyframes in a tiny inline <style> tag.
-   Everything else is Tailwind utility classes.                              */
-
-const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap');
-
+const style = `
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600&display=swap');
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050d14; font-family: 'Rajdhani', sans-serif; }
   :root {
-    --cyan:        #00e5ff;
-    --cyan-dim:    #00b8cc;
-    --cyan-ghost:  rgba(0,229,255,0.08);
-    --cyan-glow:   rgba(0,229,255,0.25);
-    --text-bright: #c8f4ff;
-    --text-mid:    #5ca8bb;
-    --text-dim:    #2e6a7a;
-    --border:      rgba(0,229,255,0.15);
-    --border-bright:rgba(0,229,255,0.4);
-    --danger:      #ff3d5a;
-    --warning:     #ffb830;
-    --success:     #00ff9d;
-    --bg-deep:     #010d12;
-    --bg-panel:    #021820;
-    --bg-card:     #031e28;
-    --bg-hover:    #042535;
-    --font-mono:   'Share Tech Mono', monospace;
-    --font-ui:     'Rajdhani', sans-serif;
+    --cyan: #00d4ff;
+    --cyan-dim: #0099bb;
+    --cyan-glow: rgba(0,212,255,0.15);
+    --cyan-border: rgba(0,212,255,0.25);
+    --dark: #050d14;
+    --dark2: #071520;
+    --dark3: #0a1e2e;
+    --text: #b0e8f5;
+    --text-dim: #4a8fa8;
+  }
+  .jarvis-bg { background: var(--dark); min-height: 100vh; position: relative; overflow: hidden; }
+  .grid-bg {
+    position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px; pointer-events: none; z-index: 0;
+  }
+  .center-glow {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 900px; height: 900px;
+    background: radial-gradient(circle, rgba(0,100,180,0.07) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  .scanlines {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+    pointer-events: none; z-index: 1;
+  }
+  .topbar {
+    background: rgba(5,13,20,0.95); border-bottom: 1px solid var(--cyan-border);
+    backdrop-filter: blur(10px); position: relative; z-index: 10;
+  }
+  .topbar::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--cyan), transparent); opacity: 0.3; }
+  .status-dot { width: 6px; height: 6px; background: var(--cyan); border-radius: 50%; box-shadow: 0 0 8px var(--cyan); animation: pulse 2s ease-in-out infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--cyan); } 50% { opacity: 0.5; box-shadow: 0 0 4px var(--cyan); } }
+  .orb-container { position: relative; width: 36px; height: 36px; flex-shrink: 0; }
+  .orb-ring { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid rgba(0,212,255,0.5); animation: orb-spin 4s linear infinite; }
+  .orb-ring::before { content: ''; position: absolute; top: -2px; left: 50%; width: 4px; height: 4px; background: var(--cyan); border-radius: 50%; box-shadow: 0 0 8px var(--cyan); transform: translateX(-50%); }
+  .orb-ring-2 { position: absolute; inset: 4px; border-radius: 50%; border: 1px solid rgba(0,212,255,0.25); animation: orb-spin 7s linear infinite reverse; }
+  .orb-core { position: absolute; inset: 12px; border-radius: 50%; background: radial-gradient(circle, rgba(0,212,255,0.4) 0%, rgba(0,100,180,0.2) 60%, transparent 100%); box-shadow: 0 0 15px rgba(0,212,255,0.4); }
+  @keyframes orb-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .section-label { font-family: 'Orbitron', monospace; font-size: 9px; color: var(--text-dim); letter-spacing: 0.25em; text-transform: uppercase; }
+  .corner-decoration { position: absolute; width: 10px; height: 10px; border-color: rgba(0,212,255,0.4); border-style: solid; }
+  .corner-tl { top: 6px; left: 6px; border-width: 1px 0 0 1px; }
+  .corner-tr { top: 6px; right: 6px; border-width: 1px 1px 0 0; }
+  .corner-bl { bottom: 6px; left: 6px; border-width: 0 0 1px 1px; }
+  .corner-br { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
+  .metric-badge { background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.15); font-family: 'Orbitron', monospace; font-size: 9px; color: var(--text-dim); letter-spacing: 0.1em; padding: 3px 8px; }
+  .chat-btn { background: transparent; border: 1px solid var(--cyan-border); color: var(--text-dim); font-family: 'Rajdhani', sans-serif; font-size: 13px; letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s; }
+  .chat-btn:hover { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-glow); }
+
+  /* SETTINGS CARD */
+  .settings-card { background: linear-gradient(135deg, rgba(5,20,35,0.8) 0%, rgba(7,21,32,0.6) 100%); border: 1px solid rgba(0,212,255,0.12); position: relative; animation: card-in 0.4s ease both; }
+  @keyframes card-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .settings-card-title { font-family: 'Orbitron', monospace; font-size: 10px; color: var(--cyan); letter-spacing: 0.2em; text-shadow: 0 0 10px rgba(0,212,255,0.4); }
+
+  /* TOGGLE */
+  .toggle-track { width: 44px; height: 22px; border-radius: 11px; border: 1px solid rgba(0,212,255,0.3); background: rgba(0,212,255,0.05); cursor: pointer; transition: all 0.25s; position: relative; flex-shrink: 0; }
+  .toggle-track.on { background: rgba(0,212,255,0.15); border-color: var(--cyan); box-shadow: 0 0 12px rgba(0,212,255,0.2); }
+  .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--text-dim); transition: all 0.25s; box-shadow: 0 0 4px rgba(0,0,0,0.4); }
+  .toggle-track.on .toggle-thumb { left: 25px; background: var(--cyan); box-shadow: 0 0 8px rgba(0,212,255,0.6); }
+
+  /* SLIDER */
+  .jarvis-range { -webkit-appearance: none; appearance: none; width: 100%; height: 3px; background: rgba(0,212,255,0.1); border-radius: 2px; outline: none; cursor: pointer; }
+  .jarvis-range::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 8px rgba(0,212,255,0.6); cursor: pointer; border: 2px solid var(--dark); }
+  .jarvis-range::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 8px rgba(0,212,255,0.6); cursor: pointer; border: 2px solid var(--dark); }
+
+  /* SELECT */
+  .jarvis-select { background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.2); color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 13px; letter-spacing: 0.05em; outline: none; cursor: pointer; transition: border-color 0.2s; appearance: none; padding: 7px 32px 7px 12px; width: 100%; }
+  .jarvis-select:focus { border-color: rgba(0,212,255,0.5); box-shadow: 0 0 10px rgba(0,212,255,0.08); }
+  .select-wrapper { position: relative; }
+  .select-arrow { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--cyan); font-size: 10px; pointer-events: none; }
+
+  /* RADIO CHIP */
+  .radio-chip { border: 1px solid rgba(0,212,255,0.2); color: var(--text-dim); font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 0.15em; cursor: pointer; transition: all 0.2s; padding: 6px 12px; background: transparent; }
+  .radio-chip.selected { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,0.1); box-shadow: 0 0 10px rgba(0,212,255,0.15); }
+  .radio-chip:hover:not(.selected) { border-color: rgba(0,212,255,0.4); color: var(--text); }
+
+  /* COLOR SWATCH */
+  .color-swatch { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; flex-shrink: 0; }
+  .color-swatch.selected { border-color: var(--cyan); box-shadow: 0 0 10px rgba(0,212,255,0.5); transform: scale(1.15); }
+
+  /* ACTION BUTTONS */
+  .btn-primary { background: linear-gradient(135deg, rgba(0,212,255,0.15) 0%, rgba(0,100,180,0.1) 100%); border: 1px solid rgba(0,212,255,0.4); color: var(--cyan); font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 0.15em; cursor: pointer; transition: all 0.2s; padding: 10px 20px; white-space: nowrap; }
+  .btn-primary:hover { background: rgba(0,212,255,0.2); box-shadow: 0 0 20px rgba(0,212,255,0.25); border-color: var(--cyan); }
+  .btn-danger { background: transparent; border: 1px solid rgba(255,60,60,0.3); color: rgba(255,100,100,0.7); font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 0.15em; cursor: pointer; transition: all 0.2s; padding: 10px 20px; white-space: nowrap; }
+  .btn-danger:hover { background: rgba(255,60,60,0.08); border-color: rgba(255,60,60,0.6); color: #ff6060; box-shadow: 0 0 15px rgba(255,60,60,0.15); }
+  .btn-secondary { background: transparent; border: 1px solid rgba(0,212,255,0.2); color: var(--text-dim); font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 0.15em; cursor: pointer; transition: all 0.2s; padding: 10px 20px; white-space: nowrap; }
+  .btn-secondary:hover { border-color: rgba(0,212,255,0.4); color: var(--text); }
+
+  /* INPUT */
+  .jarvis-input { background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.2); color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 14px; letter-spacing: 0.03em; outline: none; transition: border-color 0.2s; caret-color: var(--cyan); padding: 8px 12px; width: 100%; }
+  .jarvis-input:focus { border-color: rgba(0,212,255,0.5); box-shadow: 0 0 10px rgba(0,212,255,0.07); }
+  .jarvis-input::placeholder { color: var(--text-dim); }
+
+  /* SIDEBAR NAV */
+  .side-nav-btn { background: transparent; border: 1px solid transparent; color: var(--text-dim); font-family: 'Rajdhani', sans-serif; font-size: 13px; letter-spacing: 0.08em; cursor: pointer; transition: all 0.2s; text-align: left; padding: 10px 14px; position: relative; width: 100%; }
+  .side-nav-btn::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--cyan); transform: scaleY(0); transition: transform 0.2s; }
+  .side-nav-btn:hover { color: var(--text); background: rgba(0,212,255,0.04); }
+  .side-nav-btn.active { color: var(--cyan); background: rgba(0,212,255,0.07); border-color: rgba(0,212,255,0.15); }
+  .side-nav-btn.active::before { transform: scaleY(1); }
+
+  /* SCROLLBAR */
+  .scroll-area { scrollbar-width: thin; scrollbar-color: rgba(0,212,255,0.2) transparent; }
+  .scroll-area::-webkit-scrollbar { width: 4px; }
+  .scroll-area::-webkit-scrollbar-track { background: transparent; }
+  .scroll-area::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 2px; }
+
+  /* PROGRESS BAR */
+  .prog-bar { height: 3px; background: rgba(0,212,255,0.1); border-radius: 2px; overflow: hidden; }
+  .prog-fill { height: 100%; background: linear-gradient(90deg, var(--cyan-dim), var(--cyan)); border-radius: 2px; box-shadow: 0 0 6px rgba(0,212,255,0.4); }
+
+  /* ALERT */
+  .alert-warn { background: rgba(255,180,0,0.05); border: 1px solid rgba(255,180,0,0.2); border-left: 2px solid rgba(255,180,0,0.6); color: rgba(255,200,80,0.8); font-family: 'Rajdhani', sans-serif; font-size: 13px; padding: 10px 14px; }
+  .alert-info { background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.15); border-left: 2px solid rgba(0,212,255,0.5); color: var(--text-dim); font-family: 'Rajdhani', sans-serif; font-size: 13px; padding: 10px 14px; }
+
+  /* SAVE TOAST */
+  .save-toast { position: fixed; bottom: 20px; right: 16px; background: rgba(5,20,35,0.97); border: 1px solid var(--cyan); color: var(--cyan); font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 0.15em; padding: 12px 20px; z-index: 200; box-shadow: 0 0 24px rgba(0,212,255,0.25); animation: toast-in 0.3s ease; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── RESPONSIVE ── */
+
+  /* Mobile bottom nav tab bar */
+  .mobile-tab-bar {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(5,13,20,0.97);
+    border-top: 1px solid var(--cyan-border);
+    z-index: 30;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    backdrop-filter: blur(10px);
+  }
+  .mobile-tab-bar::-webkit-scrollbar { display: none; }
+  .mobile-tab-inner { display: flex; min-width: max-content; padding: 0 4px; }
+  .mobile-tab-btn {
+    background: transparent; border: none; border-top: 2px solid transparent;
+    color: var(--text-dim); font-family: 'Orbitron', monospace; font-size: 8px;
+    letter-spacing: 0.12em; cursor: pointer; padding: 10px 14px;
+    transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
+  }
+  .mobile-tab-btn.active { color: var(--cyan); border-top-color: var(--cyan); text-shadow: 0 0 8px rgba(0,212,255,0.5); }
+
+  /* Sidebar hidden on mobile/tablet, shown on desktop */
+  .settings-sidebar {
+    width: 200px; flex-shrink: 0;
+    border-right: 1px solid var(--cyan-border);
+    background: linear-gradient(180deg, #060f1a, #050d14);
+    position: relative;
+    display: flex; flex-direction: column;
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg-deep); }
-
-  /* scanline */
-  .scanline::before {
-    content:''; position:fixed; inset:0; pointer-events:none; z-index:9999;
-    background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px);
+  @media (max-width: 1023px) {
+    .settings-sidebar { display: none; }
+    .mobile-tab-bar { display: block; }
+    .main-content-pad { padding-bottom: 60px !important; }
+    .section-header-pad { padding: 14px 16px 10px !important; }
+    .content-scroll-pad { padding: 16px !important; }
+    .save-bar { flex-direction: column; gap: 10px; align-items: stretch !important; }
+    .save-bar-right { flex-direction: column; gap: 8px; }
+    .save-bar .btn-secondary, .save-bar .btn-primary { width: 100%; text-align: center; }
   }
 
-  /* fonts */
-  .font-mono-custom { font-family: var(--font-mono); }
-  .font-ui          { font-family: var(--font-ui); }
-
-  /* pulse ring */
-  @keyframes pulseRing {
-    0%,100%{ box-shadow: 0 0 12px var(--cyan-glow), inset 0 0 8px rgba(0,229,255,.1); }
-    50%    { box-shadow: 0 0 20px var(--cyan-glow), inset 0 0 14px rgba(0,229,255,.2); }
-  }
-  @keyframes pulseDot {
-    0%,100%{ opacity:1; transform:scale(1); }
-    50%    { opacity:.7; transform:scale(.85); }
-  }
-  .logo-ring {
-    width:36px;height:36px;border-radius:50%;border:1.5px solid var(--cyan);
-    display:flex;align-items:center;justify-content:center;position:relative;
-    animation: pulseRing 3s ease-in-out infinite;
-  }
-  .logo-ring::before {
-    content:'';width:8px;height:8px;background:var(--cyan);border-radius:50%;
-    box-shadow:0 0 10px var(--cyan);animation:pulseDot 3s ease-in-out infinite;
+  @media (max-width: 767px) {
+    .topbar-title { display: none; }
+    .topbar-status { display: none; }
+    .topbar-badges { display: none; }
+    .setting-row-wrap { flex-wrap: wrap; gap: 12px !important; }
+    .setting-row-wrap > div:first-child { flex: 1 1 100%; }
+    .radio-chips-wrap { flex-wrap: wrap; }
+    .two-col-grid { flex-direction: column !important; }
+    .two-col-grid > div { flex: unset !important; }
+    .btn-group-wrap { flex-direction: column !important; }
+    .btn-group-wrap button { width: 100%; }
+    .color-swatches { flex-wrap: wrap; }
   }
 
-  /* blink */
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
-  .blink { animation: blink 2s ease-in-out infinite; }
-  .blink-fast { animation: blink .8s infinite; }
-
-  /* fade-in panels */
-  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  .fade-up   { animation: fadeUp .4s ease both; }
-  .delay-1   { animation-delay:.08s; }
-  .delay-2   { animation-delay:.16s; }
-  .delay-3   { animation-delay:.24s; }
-  .delay-4   { animation-delay:.32s; }
-
-  /* clip shapes */
-  .clip-arrow-l { clip-path: polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%); }
-  .clip-arrow-s { clip-path: polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%); }
-  .clip-arrow-xs{ clip-path: polygon(3px 0%,100% 0%,calc(100% - 3px) 100%,0% 100%); }
-  .clip-panel   { clip-path: polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%); }
-
-  /* sidebar glow line */
-  .sidebar-glow::after {
-    content:'';position:absolute;top:0;right:0;bottom:0;width:1px;
-    background:linear-gradient(to bottom,transparent,var(--cyan) 30%,var(--cyan) 70%,transparent);
-    opacity:.3;
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .content-scroll-pad { padding: 20px 24px !important; }
+    .section-header-pad { padding: 16px 24px 12px !important; }
   }
-
-  /* panel corner cuts */
-  .panel-corners::before,.panel-corners::after {
-    content:'';position:absolute;width:12px;height:12px;border-color:var(--cyan);border-style:solid;opacity:.5;
-  }
-  .panel-corners::before { top:0;left:0;border-width:1px 0 0 1px; }
-  .panel-corners::after  { bottom:0;right:0;border-width:0 1px 1px 0; }
-
-  /* scan line bar */
-  .scan-bar {
-    position:absolute;bottom:0;left:0;right:0;height:1px;opacity:.4;
-    background:linear-gradient(to right,transparent 20%,var(--cyan) 50%,transparent 80%);
-  }
-  .scan-bar-danger {
-    background:linear-gradient(to right,transparent 20%,var(--danger) 50%,transparent 80%);
-  }
-
-  /* custom toggle */
-  .toggle-wrap { position:relative;width:42px;height:22px;flex-shrink:0; }
-  .toggle-wrap input { opacity:0;width:0;height:0;position:absolute; }
-  .toggle-track {
-    position:absolute;inset:0;background:var(--bg-panel);border:1px solid var(--border);
-    cursor:pointer;transition:all .25s;
-    clip-path:polygon(3px 0%,100% 0%,calc(100% - 3px) 100%,0% 100%);
-  }
-  .toggle-track::after {
-    content:'';position:absolute;left:3px;top:3px;width:14px;height:14px;
-    background:var(--text-dim);transition:all .25s;
-    clip-path:polygon(2px 0%,100% 0%,calc(100% - 2px) 100%,0% 100%);
-  }
-  .toggle-wrap input:checked + .toggle-track {
-    background:rgba(0,229,255,.1);border-color:var(--cyan);box-shadow:0 0 10px rgba(0,229,255,.2);
-  }
-  .toggle-wrap input:checked + .toggle-track::after {
-    left:calc(100% - 17px);background:var(--cyan);box-shadow:0 0 8px var(--cyan);
-  }
-
-  /* custom range */
-  .range-input { flex:1;-webkit-appearance:none;appearance:none;height:3px;background:var(--bg-panel);border:1px solid var(--border);outline:none;cursor:pointer; }
-  .range-input::-webkit-slider-thumb { -webkit-appearance:none;width:14px;height:14px;background:var(--cyan);cursor:pointer;clip-path:polygon(2px 0%,100% 0%,calc(100% - 2px) 100%,0% 100%);box-shadow:0 0 8px var(--cyan-glow); }
-
-  /* custom select */
-  .custom-select {
-    background:var(--bg-panel);border:1px solid var(--border);color:var(--text-bright);
-    font-family:var(--font-mono);font-size:11px;padding:6px 28px 6px 10px;letter-spacing:1px;
-    cursor:pointer;transition:border-color .2s;outline:none;
-    clip-path:polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%);
-    min-width:130px;appearance:none;-webkit-appearance:none;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3 L5 7 L8 3' stroke='%235ca8bb' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
-    background-repeat:no-repeat;background-position:right 10px center;
-  }
-  .custom-select:hover,.custom-select:focus { border-color:var(--cyan-dim); }
-
-  /* custom text input */
-  .custom-input {
-    background:var(--bg-panel);border:1px solid var(--border);color:var(--text-bright);
-    font-family:var(--font-mono);font-size:11px;padding:6px 10px;letter-spacing:.5px;
-    outline:none;transition:border-color .2s;min-width:200px;
-  }
-  .custom-input:focus { border-color:var(--cyan-dim);box-shadow:0 0 8px rgba(0,229,255,.12); }
-
-  /* scrollbar */
-  ::-webkit-scrollbar { width:5px;height:5px; }
-  ::-webkit-scrollbar-track { background:var(--bg-deep); }
-  ::-webkit-scrollbar-thumb { background:var(--border); }
-  ::-webkit-scrollbar-thumb:hover { background:var(--border-bright); }
 `;
 
-/* ── tiny helpers ── */
-const Toggle = ({ checked, onChange }) => (
-  <label className="toggle-wrap">
-    <input type="checkbox" defaultChecked={checked} onChange={onChange} />
-    <span className="toggle-track" />
-  </label>
-);
-
-const Slider = ({ min = 0, max = 100, defaultValue, suffix = "%" }) => {
-  const [val, setVal] = useState(defaultValue);
+function Toggle({ value, onChange }) {
   return (
-    <div
-      style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 180 }}
-    >
-      <input
-        type="range"
-        className="range-input"
-        min={min}
-        max={max}
-        value={val}
-        onChange={(e) => setVal(e.target.value)}
-      />
-      <span
-        className="font-mono-custom"
-        style={{
-          fontSize: 11,
-          color: "var(--cyan)",
-          minWidth: 32,
-          textAlign: "right",
-        }}
-      >
-        {val}
-        {suffix}
-      </span>
+    <div className={`toggle-track ${value ? "on" : ""}`} onClick={() => onChange(!value)}>
+      <div className="toggle-thumb" />
     </div>
   );
-};
+}
 
-const Select = ({ options, defaultValue }) => (
-  <select
-    className="custom-select font-mono-custom"
-    defaultValue={defaultValue}
-  >
-    {options.map((o) => (
-      <option key={o}>{o}</option>
-    ))}
-  </select>
-);
-
-const Btn = ({ variant = "primary", children, ...props }) => {
-  const styles = {
-    primary: { borderColor: "var(--cyan)", color: "var(--cyan)" },
-    secondary: { borderColor: "var(--border)", color: "var(--text-mid)" },
-    danger: { borderColor: "rgba(255,61,90,0.4)", color: "var(--danger)" },
-    warning: { borderColor: "rgba(255,184,48,0.4)", color: "var(--warning)" },
-  };
+function SettingRow({ label, sub, children }) {
   return (
-    <button
-      {...props}
-      className="clip-panel font-mono-custom"
-      style={{
-        fontFamily: "var(--font-mono)",
-        fontSize: 10,
-        letterSpacing: 2,
-        textTransform: "uppercase",
-        padding: "8px 18px",
-        border: "1px solid",
-        cursor: "pointer",
-        transition: "all .2s",
-        background: "transparent",
-        ...styles[variant],
-      }}
-    >
-      {children}
-    </button>
+    <div className="setting-row-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "14px 0", borderBottom: "1px solid rgba(0,212,255,0.06)" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
+        <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 14, color: "var(--text)", letterSpacing: "0.05em" }}>{label}</span>
+        {sub && <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.04em" }}>{sub}</span>}
+      </div>
+      <div style={{ flexShrink: 0 }}>{children}</div>
+    </div>
   );
-};
+}
 
-/* ── setting row wrappers ── */
-const SettingRow = ({ label, desc, children, noBorder }) => (
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "1fr auto",
-      alignItems: "center",
-      gap: 16,
-      padding: "12px 0",
-      borderBottom: noBorder ? "none" : "1px solid rgba(0,229,255,0.06)",
-    }}
-  >
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <div
-        style={{
-          fontSize: 13,
-          fontWeight: 600,
-          color: "var(--text-bright)",
-          letterSpacing: ".5px",
-        }}
-      >
-        {label}
+function Card({ title, icon, children, delay = 0 }) {
+  return (
+    <div className="settings-card" style={{ borderRadius: 2, padding: 20, marginBottom: 16, position: "relative", animationDelay: `${delay}ms` }}>
+      <div className="corner-decoration corner-tl" />
+      <div className="corner-decoration corner-br" />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <span style={{ color: "var(--cyan)", fontSize: 14 }}>{icon}</span>
+        <span className="settings-card-title">{title}</span>
+        <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,rgba(0,212,255,0.2),transparent)", marginLeft: 8 }} />
       </div>
-      <div style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.4 }}>
-        {desc}
-      </div>
-    </div>
-    {children}
-  </div>
-);
-
-/* ── panel wrapper ── */
-const Panel = ({
-  title,
-  subtitle,
-  badge,
-  icon,
-  delay = "",
-  dangerMode,
-  children,
-}) => (
-  <div
-    className={`panel-corners fade-up ${delay}`}
-    style={{
-      background: "var(--bg-card)",
-      border: `1px solid ${dangerMode ? "rgba(255,61,90,0.2)" : "var(--border)"}`,
-      position: "relative",
-      overflow: "hidden",
-    }}
-  >
-    <div className={`scan-bar ${dangerMode ? "scan-bar-danger" : ""}`} />
-    {/* header */}
-    <div
-      style={{
-        padding: "14px 20px 12px",
-        borderBottom: `1px solid ${dangerMode ? "rgba(255,61,90,0.15)" : "var(--border)"}`,
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        background: dangerMode
-          ? "rgba(255,61,90,0.03)"
-          : "rgba(0,229,255,0.02)",
-      }}
-    >
-      <div
-        className="clip-arrow-s"
-        style={{
-          width: 28,
-          height: 28,
-          border: `1px solid ${dangerMode ? "rgba(255,61,90,0.3)" : "var(--border)"}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "var(--bg-panel)",
-          flexShrink: 0,
-        }}
-      >
-        <svg
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke={dangerMode ? "var(--danger)" : "var(--cyan)"}
-          strokeWidth="1.5"
-          style={{ width: 13, height: 13 }}
-        >
-          {icon}
-        </svg>
-      </div>
-      <div>
-        <div
-          className="font-mono-custom"
-          style={{
-            fontSize: 11,
-            letterSpacing: 2,
-            color: dangerMode ? "var(--danger)" : "var(--cyan)",
-            textTransform: "uppercase",
-          }}
-        >
-          {title}
-        </div>
-        <div
-          style={{
-            fontSize: 11,
-            color: "var(--text-dim)",
-            marginTop: 1,
-            letterSpacing: ".5px",
-          }}
-        >
-          {subtitle}
-        </div>
-      </div>
-      <div
-        className="clip-arrow-xs font-mono-custom"
-        style={{
-          marginLeft: "auto",
-          fontSize: 9,
-          padding: "3px 8px",
-          border: `1px solid ${dangerMode ? "rgba(255,61,90,0.3)" : "var(--border)"}`,
-          color: dangerMode ? "var(--danger)" : "var(--text-dim)",
-          letterSpacing: 1,
-        }}
-      >
-        {badge}
-      </div>
-    </div>
-    {/* body */}
-    <div
-      style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }}
-    >
       {children}
     </div>
-  </div>
-);
+  );
+}
 
-/* ── nav icon helper ── */
-const NavIcon = ({ d, extra }) => (
-  <svg
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    style={{ width: 13, height: 13, flexShrink: 0 }}
-  >
-    {d && <path d={d} />}
-    {extra}
-  </svg>
-);
+const SECTIONS = ["GENERAL", "INTERFACE", "AI CORE", "SECURITY", "NETWORK", "SYSTEM"];
+const ACCENT_COLORS = ["#00d4ff", "#00ffd0", "#7b61ff", "#ff6b35", "#39ff14", "#ff2d78"];
 
-/* ── MAIN COMPONENT ── */
 export default function JarvisSettings() {
   const navigate = useNavigate();
-  const [activeNav, setActiveNav] = useState("General");
-  const [selectedColor, setSelectedColor] = useState("#00e5ff");
+  const [activeSection, setActiveSection] = useState("GENERAL");
+  const [toast, setToast] = useState(false);
 
-  const COLORS = ["#00e5ff", "#00ff9d", "#ff3d5a", "#ffb830", "#9b59b6"];
+  const [settings, setSettings] = useState({
+    operatorName: "OPERATOR",
+    language: "en-US",
+    timezone: "UTC+0",
+    notifications: true,
+    sounds: true,
+    autoSave: true,
+    theme: "DARK",
+    accentColor: "#00d4ff",
+    fontSize: 15,
+    animations: true,
+    scanlines: true,
+    gridBg: true,
+    compactMode: false,
+    model: "claude-sonnet-4-20250514",
+    responseStyle: "PRECISE",
+    contextWindow: 75,
+    streamResponse: true,
+    codeHighlight: true,
+    webSearch: false,
+    maxTokens: 1000,
+    encryptChats: true,
+    twoFactor: false,
+    sessionTimeout: "30",
+    clearOnClose: false,
+    proxy: false,
+    proxyUrl: "",
+    timeout: "30",
+    retries: "3",
+    diagnostics: true,
+    crashReports: false,
+    updates: true,
+  });
 
-  const SNAV = [
-    {
-      label: "General",
-      icon: (
-        <>
-          <circle cx="8" cy="8" r="3" />
-          <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.22 3.22l1.42 1.42M11.36 11.36l1.42 1.42M3.22 12.78l1.42-1.42M11.36 4.64l1.42-1.42" />
-        </>
-      ),
-    },
-    {
-      label: "Interface",
-      icon: (
-        <>
-          <rect x="2" y="2" width="12" height="12" rx="1" />
-          <path d="M5 8h6M8 5v6" />
-        </>
-      ),
-    },
-    {
-      label: "Audio",
-      icon: (
-        <>
-          <path d="M13 7A5 5 0 003 7v1a5 5 0 0010 0V7z" />
-          <path d="M8 12v3M6 15h4" />
-        </>
-      ),
-    },
-    {
-      label: "AI Core",
-      icon: (
-        <path d="M8 1L10.5 6H15L11 9.5L12.5 15L8 12L3.5 15L5 9.5L1 6H5.5z" />
-      ),
-    },
-    {
-      label: "Network",
-      icon: (
-        <>
-          <rect x="2" y="4" width="12" height="9" rx="1" />
-          <path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1" />
-        </>
-      ),
-    },
-    {
-      label: "Logs",
-      icon: (
-        <>
-          <rect x="3" y="1" width="10" height="14" rx="1" />
-          <path d="M6 5h4M6 8h4M6 11h2" />
-        </>
-      ),
-    },
-    { label: "divider" },
-    {
-      label: "About",
-      icon: (
-        <>
-          <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM8 6v4M8 11v1" />
-        </>
-      ),
-    },
-  ];
+  const set = (key, val) => setSettings(s => ({ ...s, [key]: val }));
 
-  const PERMISSIONS = [
-    {
-      name: "Network Access",
-      desc: "Read and write external network connections",
-      status: "GRANTED",
-      color: "var(--success)",
-      icon: (
-        <>
-          <path d="M8 1a7 7 0 100 14A7 7 0 008 1z" />
-          <path d="M5 8l2 2 4-4" />
-        </>
-      ),
-    },
-    {
-      name: "File System",
-      desc: "Read-only access to designated directories",
-      status: "GRANTED",
-      color: "var(--success)",
-      icon: (
-        <>
-          <rect x="2" y="4" width="12" height="8" rx="1" />
-          <path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1" />
-        </>
-      ),
-    },
-    {
-      name: "Hardware Interface",
-      desc: "Direct hardware sensor and actuator control",
-      status: "RESTRICTED",
-      color: "var(--warning)",
-      icon: (
-        <>
-          <path d="M8 1L1 14h14L8 1z" />
-          <path d="M8 6v4M8 11v1" />
-        </>
-      ),
-    },
-    {
-      name: "External API Keys",
-      desc: "Access to stored third-party service credentials",
-      status: "DENIED",
-      color: "var(--danger)",
-      icon: (
-        <>
-          <path d="M8 1a7 7 0 100 14A7 7 0 008 1z" />
-          <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" />
-        </>
-      ),
-    },
-  ];
+  const save = () => {
+    setToast(true);
+    setTimeout(() => setToast(false), 2400);
+  };
 
-  const permBadge = (s) =>
-    ({
-      GRANTED: {
-        bg: "rgba(0,255,157,.08)",
-        border: "rgba(0,255,157,.3)",
-        color: "var(--success)",
-      },
-      RESTRICTED: {
-        bg: "rgba(255,184,48,.08)",
-        border: "rgba(255,184,48,.3)",
-        color: "var(--warning)",
-      },
-      DENIED: {
-        bg: "rgba(255,61,90,.08)",
-        border: "rgba(255,61,90,.3)",
-        color: "var(--danger)",
-      },
-    })[s];
+  const renderSection = () => {
+    switch (activeSection) {
+      case "GENERAL": return (
+        <>
+          <Card title="OPERATOR PROFILE" icon="◈" delay={0}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <div className="section-label" style={{ marginBottom: 8 }}>OPERATOR DESIGNATION</div>
+                <input className="jarvis-input" value={settings.operatorName} onChange={e => set("operatorName", e.target.value)} placeholder="Enter callsign..." />
+              </div>
+              <div className="two-col-grid" style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div className="section-label" style={{ marginBottom: 8 }}>LANGUAGE</div>
+                  <div className="select-wrapper">
+                    <select className="jarvis-select" value={settings.language} onChange={e => set("language", e.target.value)}>
+                      <option value="en-US">English (US)</option>
+                      <option value="en-GB">English (UK)</option>
+                      <option value="fr-FR">Français</option>
+                      <option value="de-DE">Deutsch</option>
+                      <option value="ja-JP">日本語</option>
+                    </select>
+                    <span className="select-arrow">▼</span>
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="section-label" style={{ marginBottom: 8 }}>TIMEZONE</div>
+                  <div className="select-wrapper">
+                    <select className="jarvis-select" value={settings.timezone} onChange={e => set("timezone", e.target.value)}>
+                      <option value="UTC+0">UTC+0</option>
+                      <option value="UTC+5:30">UTC+5:30 (IST)</option>
+                      <option value="UTC-5">UTC-5 (EST)</option>
+                      <option value="UTC-8">UTC-8 (PST)</option>
+                      <option value="UTC+1">UTC+1 (CET)</option>
+                    </select>
+                    <span className="select-arrow">▼</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+          <Card title="NOTIFICATIONS & ALERTS" icon="◉" delay={60}>
+            <SettingRow label="System Notifications" sub="Alert popups for key events"><Toggle value={settings.notifications} onChange={v => set("notifications", v)} /></SettingRow>
+            <SettingRow label="Interface Sounds" sub="Auditory feedback on actions"><Toggle value={settings.sounds} onChange={v => set("sounds", v)} /></SettingRow>
+            <SettingRow label="Auto-Save Sessions" sub="Persist conversations automatically"><Toggle value={settings.autoSave} onChange={v => set("autoSave", v)} /></SettingRow>
+          </Card>
+          <Card title="DATA MANAGEMENT" icon="◫" delay={120}>
+            <div className="alert-warn" style={{ marginBottom: 16 }}>⚠ WARNING — Clearing session data is irreversible. All chat history will be permanently erased.</div>
+            <div className="btn-group-wrap" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="btn-secondary">EXPORT DATA</button>
+              <button className="btn-secondary">IMPORT BACKUP</button>
+              <button className="btn-danger">CLEAR ALL SESSIONS</button>
+            </div>
+          </Card>
+        </>
+      );
+
+      case "INTERFACE": return (
+        <>
+          <Card title="THEME & APPEARANCE" icon="◈" delay={0}>
+            <SettingRow label="Color Theme" sub="Select visual mode">
+              <div className="radio-chips-wrap" style={{ display: "flex", gap: 6 }}>
+                {["DARK", "DARKER", "MIDNIGHT"].map(t => (
+                  <button key={t} className={`radio-chip ${settings.theme === t ? "selected" : ""}`} onClick={() => set("theme", t)}>{t}</button>
+                ))}
+              </div>
+            </SettingRow>
+            <SettingRow label="Accent Color" sub="Primary highlight color">
+              <div className="color-swatches" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {ACCENT_COLORS.map(c => (
+                  <div key={c} className={`color-swatch ${settings.accentColor === c ? "selected" : ""}`}
+                    style={{ background: c, boxShadow: `0 0 6px ${c}55` }}
+                    onClick={() => set("accentColor", c)} />
+                ))}
+              </div>
+            </SettingRow>
+            <div style={{ padding: "14px 0", borderBottom: "1px solid rgba(0,212,255,0.06)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 14, color: "var(--text)", letterSpacing: "0.05em" }}>Font Scale</span>
+                  <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, color: "var(--text-dim)" }}>Interface text size</div>
+                </div>
+                <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 12, color: "var(--cyan)" }}>{settings.fontSize}px</span>
+              </div>
+              <input type="range" className="jarvis-range" min={12} max={20} value={settings.fontSize} onChange={e => set("fontSize", +e.target.value)} />
+            </div>
+          </Card>
+          <Card title="VISUAL EFFECTS" icon="◉" delay={60}>
+            <SettingRow label="Animations" sub="Motion transitions and micro-interactions"><Toggle value={settings.animations} onChange={v => set("animations", v)} /></SettingRow>
+            <SettingRow label="Scanline Overlay" sub="CRT scanline visual effect"><Toggle value={settings.scanlines} onChange={v => set("scanlines", v)} /></SettingRow>
+            <SettingRow label="Grid Background" sub="Background grid pattern"><Toggle value={settings.gridBg} onChange={v => set("gridBg", v)} /></SettingRow>
+            <SettingRow label="Compact Mode" sub="Reduce padding for higher density"><Toggle value={settings.compactMode} onChange={v => set("compactMode", v)} /></SettingRow>
+          </Card>
+        </>
+      );
+
+      case "AI CORE": return (
+        <>
+          <Card title="MODEL CONFIGURATION" icon="◈" delay={0}>
+            <div style={{ marginBottom: 16 }}>
+              <div className="section-label" style={{ marginBottom: 8 }}>AI MODEL</div>
+              <div className="select-wrapper">
+                <select className="jarvis-select" value={settings.model} onChange={e => set("model", e.target.value)}>
+                  <option value="claude-sonnet-4-20250514">Claude Sonnet 4 — Balanced</option>
+                  <option value="claude-opus-4-20250514">Claude Opus 4 — Maximum Power</option>
+                  <option value="claude-haiku-4-5">Claude Haiku 4.5 — Ultra-Fast</option>
+                </select>
+                <span className="select-arrow">▼</span>
+              </div>
+            </div>
+            <div>
+              <div className="section-label" style={{ marginBottom: 8 }}>RESPONSE STYLE</div>
+              <div className="radio-chips-wrap" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {["PRECISE", "BALANCED", "CREATIVE", "VERBOSE"].map(s => (
+                  <button key={s} className={`radio-chip ${settings.responseStyle === s ? "selected" : ""}`} onClick={() => set("responseStyle", s)}>{s}</button>
+                ))}
+              </div>
+            </div>
+          </Card>
+          <Card title="CONTEXT & MEMORY" icon="◫" delay={60}>
+            <div style={{ padding: "14px 0", borderBottom: "1px solid rgba(0,212,255,0.06)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <div>
+                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 14, color: "var(--text)" }}>Context Window Usage</span>
+                  <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, color: "var(--text-dim)" }}>Memory allocation for conversation history</div>
+                </div>
+                <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 12, color: "var(--cyan)" }}>{settings.contextWindow}%</span>
+              </div>
+              <input type="range" className="jarvis-range" min={10} max={100} step={5} value={settings.contextWindow} onChange={e => set("contextWindow", +e.target.value)} />
+              <div className="prog-bar" style={{ marginTop: 8 }}>
+                <div className="prog-fill" style={{ width: `${settings.contextWindow}%` }} />
+              </div>
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <div className="section-label" style={{ marginBottom: 8 }}>MAX TOKENS PER RESPONSE</div>
+              <div className="select-wrapper">
+                <select className="jarvis-select" value={settings.maxTokens} onChange={e => set("maxTokens", +e.target.value)}>
+                  <option value={500}>500 — Concise</option>
+                  <option value={1000}>1000 — Standard</option>
+                  <option value={2000}>2000 — Detailed</option>
+                  <option value={4000}>4000 — Comprehensive</option>
+                </select>
+                <span className="select-arrow">▼</span>
+              </div>
+            </div>
+          </Card>
+          <Card title="CAPABILITIES" icon="◉" delay={120}>
+            <SettingRow label="Stream Responses" sub="Display output progressively as generated"><Toggle value={settings.streamResponse} onChange={v => set("streamResponse", v)} /></SettingRow>
+            <SettingRow label="Code Syntax Highlighting" sub="Format and colorize code blocks"><Toggle value={settings.codeHighlight} onChange={v => set("codeHighlight", v)} /></SettingRow>
+            <SettingRow label="Web Search Integration" sub="Allow real-time data retrieval"><Toggle value={settings.webSearch} onChange={v => set("webSearch", v)} /></SettingRow>
+          </Card>
+        </>
+      );
+
+      case "SECURITY": return (
+        <>
+          <Card title="ENCRYPTION & PRIVACY" icon="◈" delay={0}>
+            <SettingRow label="End-to-End Encryption" sub="AES-256 session encryption"><Toggle value={settings.encryptChats} onChange={v => set("encryptChats", v)} /></SettingRow>
+            <SettingRow label="Two-Factor Authentication" sub="Biometric or TOTP verification"><Toggle value={settings.twoFactor} onChange={v => set("twoFactor", v)} /></SettingRow>
+            <SettingRow label="Clear Data on Close" sub="Wipe session on application exit"><Toggle value={settings.clearOnClose} onChange={v => set("clearOnClose", v)} /></SettingRow>
+          </Card>
+          <Card title="SESSION SECURITY" icon="◉" delay={60}>
+            <div style={{ marginBottom: 16 }}>
+              <div className="section-label" style={{ marginBottom: 8 }}>AUTO-LOCK TIMEOUT</div>
+              <div className="select-wrapper">
+                <select className="jarvis-select" value={settings.sessionTimeout} onChange={e => set("sessionTimeout", e.target.value)}>
+                  <option value="5">5 minutes</option>
+                  <option value="15">15 minutes</option>
+                  <option value="30">30 minutes</option>
+                  <option value="60">1 hour</option>
+                  <option value="never">Never</option>
+                </select>
+                <span className="select-arrow">▼</span>
+              </div>
+            </div>
+            <div className="alert-info">ℹ Current encryption status: ACTIVE · AES-256-GCM · Key rotation: 24h</div>
+          </Card>
+          <Card title="ACCESS LOG" icon="◫" delay={120}>
+            {[
+              ["LOGIN", "192.168.1.1", "2 mins ago", "#00d4ff"],
+              ["API CALL", "10.0.0.42", "14 mins ago", "#00d4ff"],
+              ["FAILED AUTH", "203.0.113.0", "1 hour ago", "#ff4444"],
+            ].map(([event, ip, time, color]) => (
+              <div key={event + time} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid rgba(0,212,255,0.06)", flexWrap: "wrap", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: color, boxShadow: `0 0 6px ${color}` }} />
+                  <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 9, color, letterSpacing: "0.15em" }}>{event}</span>
+                </div>
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, color: "var(--text-dim)" }}>{ip}</span>
+                <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.1em" }}>{time}</span>
+              </div>
+            ))}
+          </Card>
+        </>
+      );
+
+      case "NETWORK": return (
+        <>
+          <Card title="CONNECTION SETTINGS" icon="◈" delay={0}>
+            <SettingRow label="Use Proxy" sub="Route traffic through proxy server"><Toggle value={settings.proxy} onChange={v => set("proxy", v)} /></SettingRow>
+            {settings.proxy && (
+              <div style={{ paddingBottom: 14 }}>
+                <div className="section-label" style={{ marginBottom: 8 }}>PROXY URL</div>
+                <input className="jarvis-input" value={settings.proxyUrl} onChange={e => set("proxyUrl", e.target.value)} placeholder="http://proxy.server:8080" />
+              </div>
+            )}
+            <div className="two-col-grid" style={{ display: "flex", gap: 12, marginTop: 4 }}>
+              <div style={{ flex: 1 }}>
+                <div className="section-label" style={{ marginBottom: 8 }}>TIMEOUT (SEC)</div>
+                <div className="select-wrapper">
+                  <select className="jarvis-select" value={settings.timeout} onChange={e => set("timeout", e.target.value)}>
+                    <option value="10">10s</option>
+                    <option value="30">30s</option>
+                    <option value="60">60s</option>
+                    <option value="120">120s</option>
+                  </select>
+                  <span className="select-arrow">▼</span>
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div className="section-label" style={{ marginBottom: 8 }}>MAX RETRIES</div>
+                <div className="select-wrapper">
+                  <select className="jarvis-select" value={settings.retries} onChange={e => set("retries", e.target.value)}>
+                    <option value="1">1</option>
+                    <option value="3">3</option>
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                  </select>
+                  <span className="select-arrow">▼</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+          <Card title="NETWORK DIAGNOSTICS" icon="◉" delay={60}>
+            {[
+              ["API ENDPOINT", "api.anthropic.com", "12ms", true],
+              ["DNS RESOLVER", "8.8.8.8", "4ms", true],
+              ["PROXY SERVER", "N/A", "—", false],
+            ].map(([name, host, ping, ok]) => (
+              <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid rgba(0,212,255,0.06)", flexWrap: "wrap", gap: 6 }}>
+                <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.15em" }}>{name}</span>
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, color: "var(--text)" }}>{host}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: ok ? "var(--cyan)" : "rgba(100,100,100,0.5)", boxShadow: ok ? "0 0 6px var(--cyan)" : "none" }} />
+                  <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 9, color: ok ? "var(--cyan)" : "var(--text-dim)", letterSpacing: "0.1em" }}>{ping}</span>
+                </div>
+              </div>
+            ))}
+            <div style={{ marginTop: 14 }}>
+              <button className="btn-secondary" style={{ width: "100%" }}>RUN DIAGNOSTICS</button>
+            </div>
+          </Card>
+        </>
+      );
+
+      case "SYSTEM": return (
+        <>
+          <Card title="SYSTEM INFORMATION" icon="◈" delay={0}>
+            {[
+              ["VERSION", "J.A.R.V.I.S v7.3.1"],
+              ["BUILD", "2025.04.03-stable"],
+              ["CORE ENGINE", "Claude Sonnet 4"],
+              ["PLATFORM", "Web Interface"],
+              ["UPTIME", "99.97% (30d avg)"],
+            ].map(([label, val]) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid rgba(0,212,255,0.06)" }}>
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, color: "var(--text-dim)", letterSpacing: "0.1em" }}>{label}</span>
+                <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 10, color: "var(--cyan)", letterSpacing: "0.1em" }}>{val}</span>
+              </div>
+            ))}
+          </Card>
+          <Card title="TELEMETRY" icon="◉" delay={60}>
+            <SettingRow label="Usage Diagnostics" sub="Anonymous performance metrics"><Toggle value={settings.diagnostics} onChange={v => set("diagnostics", v)} /></SettingRow>
+            <SettingRow label="Crash Reports" sub="Automatic error reporting"><Toggle value={settings.crashReports} onChange={v => set("crashReports", v)} /></SettingRow>
+            <SettingRow label="Automatic Updates" sub="Install updates in background"><Toggle value={settings.updates} onChange={v => set("updates", v)} /></SettingRow>
+          </Card>
+          <Card title="MAINTENANCE" icon="◫" delay={120}>
+            <div className="btn-group-wrap" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="btn-secondary">CLEAR CACHE</button>
+              <button className="btn-secondary">CHECK FOR UPDATES</button>
+              <button className="btn-danger">FACTORY RESET</button>
+            </div>
+          </Card>
+        </>
+      );
+
+      default: return null;
+    }
+  };
 
   return (
     <>
-      <style>{STYLE}</style>
-      <div
-        className="scanline font-ui"
-        style={{
-          background: "var(--bg-deep)",
-          color: "var(--text-bright)",
-          minHeight: "100vh",
-          display: "flex",
-          overflow: "hidden",
-          fontFamily: "var(--font-ui)",
-          fontSize: 14,
-        }}
-      >
-        {/* ── SIDEBAR ── */}
-        <div
-          className="sidebar-glow"
-          style={{
-            width: 210,
-            minWidth: 210,
-            background: "var(--bg-panel)",
-            borderRight: "1px solid var(--border)",
-            display: "flex",
-            flexDirection: "column",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          {/* logo */}
-          <div
-            style={{
-              padding: "18px 20px 16px",
-              borderBottom: "1px solid var(--border)",
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-            }}
-          >
-            <div className="logo-ring" />
-            <div style={{ lineHeight: 1.1 }}>
-              <div
-                className="font-mono-custom"
-                style={{ fontSize: 13, color: "var(--cyan)", letterSpacing: 2 }}
-              >
-                J.A.R.V.I.S
-              </div>
-              <div
-                className="font-mono-custom"
-                style={{
-                  fontSize: 10,
-                  color: "var(--text-mid)",
-                  letterSpacing: 1,
-                }}
-              >
-                V7.3.1 — ONLINE
-              </div>
-            </div>
-          </div>
+      <style>{style}</style>
+      <div className="jarvis-bg" style={{ display: "flex", flexDirection: "column", height: "100dvh", width: "100vw", overflow: "hidden" }}>
+        <div className="grid-bg" />
+        <div className="center-glow" />
+        <div className="scanlines" />
 
-          {/* sessions */}
-          <div
-            className="font-mono-custom"
-            style={{
-              fontSize: 9,
-              color: "var(--text-dim)",
-              letterSpacing: 2,
-              padding: "14px 20px 6px",
-              textTransform: "uppercase",
-            }}
-          >
-            // Sessions
-          </div>
-          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
-            {[
-              ["System Diagnostics", "Today"],
-              ["Mission Briefing Alpha", "Today"],
-              ["Threat Analysis Report", "Yesterday"],
-              ["Power Core Status", "Yesterday"],
-              ["Neural Network Update", "Mar 22"],
-            ].map(([name, date]) => (
-              <div
-                key={name}
-                style={{
-                  padding: "9px 20px",
-                  cursor: "pointer",
-                  borderLeft: "2px solid transparent",
-                  transition: "all .18s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--cyan-ghost)";
-                  e.currentTarget.style.borderLeftColor =
-                    "var(--border-bright)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.borderLeftColor = "transparent";
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: "var(--text-bright)",
-                    letterSpacing: ".3px",
-                  }}
-                >
-                  {name}
-                </div>
-                <div
-                  className="font-mono-custom"
-                  style={{
-                    fontSize: 10,
-                    color: "var(--text-dim)",
-                    marginTop: 1,
-                  }}
-                >
-                  {date}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* status */}
-          <div
-            style={{
-              padding: "12px 20px",
-              borderTop: "1px solid var(--border)",
-            }}
-          >
-            <div
-              className="font-mono-custom"
-              style={{
-                fontSize: 9,
-                color: "var(--text-dim)",
-                letterSpacing: 2,
-                marginBottom: 8,
-                textTransform: "uppercase",
-              }}
+        {/* TOPBAR */}
+        <div className="topbar" style={{ padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button
+              onClick={() => navigate("/chat")}
+              style={{ background: "transparent", border: "1px solid var(--cyan-border)", color: "var(--text-dim)", cursor: "pointer", padding: "5px 10px", fontFamily: "'Orbitron', monospace", fontSize: 10, letterSpacing: "0.1em", flexShrink: 0 }}
             >
-              // System Status
-            </div>
-            {[
-              ["CORE TEMP", "36.2°C", "var(--warning)"],
-              ["UPTIME", "99.97%", "var(--success)"],
-            ].map(([k, v, c]) => (
-              <div
-                key={k}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 4,
-                }}
-              >
-                <span
-                  className="font-mono-custom"
-                  style={{
-                    fontSize: 11,
-                    color: "var(--text-mid)",
-                    letterSpacing: ".5px",
-                  }}
-                >
-                  {k}
-                </span>
-                <span
-                  className="font-mono-custom"
-                  style={{ fontSize: 11, color: c }}
-                >
-                  {v}
-                </span>
+              ◀
+            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="orb-container">
+                <div className="orb-ring" />
+                <div className="orb-ring-2" />
+                <div className="orb-core" />
               </div>
-            ))}
+              <div className="topbar-title" style={{ fontFamily: "'Orbitron', monospace", fontSize: 13, color: "var(--cyan)", letterSpacing: "0.2em", textShadow: "0 0 15px rgba(0,212,255,0.5)" }}>
+                SYSTEM CONFIG
+              </div>
+            </div>
+            <div className="topbar-status" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div className="status-dot" />
+              <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.15em", whiteSpace: "nowrap" }}>ALL SYSTEMS NOMINAL</span>
+            </div>
+          </div>
+          <div className="topbar-badges" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div className="metric-badge">v7.3.1</div>
+            <div className="metric-badge">SECURE</div>
           </div>
         </div>
 
-        {/* ── MAIN ── */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
-        >
-          {/* topbar */}
-          <div
-            style={{
-              height: 48,
-              background: "var(--bg-panel)",
-              borderBottom: "1px solid var(--border)",
-              display: "flex",
-              alignItems: "center",
-              padding: "0 24px",
-              gap: 16,
-              flexShrink: 0,
-            }}
-          >
-            <div
-              onClick={() => navigate("/chat")}
-              className="clip-arrow-xs"
-              style={{
-                width: 28,
-                height: 28,
-                border: "1px solid var(--border)",
-                background: "var(--bg-card)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <svg
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="var(--text-mid)"
-                strokeWidth="1.5"
-                style={{ width: 12, height: 12 }}
-              >
-                <path d="M8 2L4 6L8 10" />
-              </svg>
+        {/* BODY */}
+        <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative", zIndex: 10 }}>
+
+          {/* SIDEBAR — desktop only */}
+          <div className="settings-sidebar">
+            <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 1, background: "linear-gradient(180deg,transparent,var(--cyan),transparent)", opacity: 0.3 }} />
+            <div style={{ padding: "20px 16px", flex: 1 }}>
+              <div className="section-label" style={{ marginBottom: 16 }}>// MODULES</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {SECTIONS.map(s => (
+                  <button key={s} className={`side-nav-btn ${activeSection === s ? "active" : ""}`} style={{ borderRadius: 2 }} onClick={() => setActiveSection(s)}>
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div
-              className="font-mono-custom"
-              style={{ fontSize: 13, color: "var(--cyan)", letterSpacing: 3 }}
-            >
-              SETTINGS
-            </div>
-            <div
-              className="font-mono-custom"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 10,
-                color: "var(--text-mid)",
-                letterSpacing: 1,
-              }}
-            >
-              <div
-                className="blink"
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: "var(--success)",
-                  boxShadow: "0 0 6px var(--success)",
-                }}
-              />
-              ALL SYSTEMS NOMINAL
-            </div>
-            <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
-              {["ANALYTICS", "SETTINGS", "SECURITY"].map((t) => (
-                <button
-                  key={t}
-                  className="clip-arrow-s font-mono-custom"
-                  style={{
-                    padding: "5px 14px",
-                    fontSize: 10,
-                    letterSpacing: 2,
-                    textTransform: "uppercase",
-                    background:
-                      t === "SETTINGS" ? "rgba(0,229,255,0.07)" : "transparent",
-                    border: `1px solid ${t === "SETTINGS" ? "var(--cyan)" : "var(--border)"}`,
-                    color: t === "SETTINGS" ? "var(--cyan)" : "var(--text-mid)",
-                    cursor: "pointer",
-                  }}
-                >
-                  {t}
-                </button>
+            <div style={{ borderTop: "1px solid rgba(0,212,255,0.1)", padding: "16px" }}>
+              <div className="section-label" style={{ marginBottom: 10 }}>// RESOURCE USAGE</div>
+              {[["CPU", 28], ["RAM", 41], ["DISK", 17]].map(([label, pct]) => (
+                <div key={label} style={{ marginBottom: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 10, color: "var(--text-dim)", letterSpacing: "0.1em" }}>{label}</span>
+                    <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 9, color: "var(--cyan)" }}>{pct}%</span>
+                  </div>
+                  <div className="prog-bar">
+                    <div className="prog-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
               ))}
             </div>
           </div>
 
-          {/* settings body */}
-          <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: "28px 32px",
-              display: "grid",
-              gridTemplateColumns: "200px 1fr",
-              gap: 24,
-              alignItems: "start",
-            }}
-          >
-            {/* left nav */}
-            <div
-              style={{
-                position: "sticky",
-                top: 0,
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-              }}
-            >
-              <div
-                className="font-mono-custom"
-                style={{
-                  fontSize: 9,
-                  color: "var(--text-dim)",
-                  letterSpacing: 2,
-                  padding: "0 12px 8px",
-                  textTransform: "uppercase",
-                }}
-              >
-                // Config Modules
+          {/* MAIN CONTENT */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
+
+            {/* Section header */}
+            <div className="section-header-pad" style={{ padding: "18px 28px 12px", borderBottom: "1px solid rgba(0,212,255,0.08)", flexShrink: 0 }}>
+              <div style={{ fontFamily: "'Orbitron', monospace", fontSize: 16, color: "var(--cyan)", letterSpacing: "0.2em", textShadow: "0 0 20px rgba(0,212,255,0.4)" }}>
+                {activeSection}
               </div>
-              {SNAV.map((item, i) => {
-                if (item.label === "divider")
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        height: 1,
-                        background:
-                          "linear-gradient(to right,transparent,var(--border),transparent)",
-                        margin: "10px 0",
-                      }}
-                    />
-                  );
-                const isActive = activeNav === item.label;
-                return (
-                  <div
-                    key={item.label}
-                    onClick={() => setActiveNav(item.label)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 9,
-                      padding: "8px 12px",
-                      borderLeft: `2px solid ${isActive ? "var(--cyan)" : "transparent"}`,
-                      cursor: "pointer",
-                      transition: "all .18s",
-                      color: isActive ? "var(--cyan)" : "var(--text-mid)",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
-                      background: isActive
-                        ? "rgba(0,229,255,0.06)"
-                        : "transparent",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.color = "var(--text-bright)";
-                        e.currentTarget.style.background = "var(--cyan-ghost)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.color = "var(--text-mid)";
-                        e.currentTarget.style.background = "transparent";
-                      }
-                    }}
-                  >
-                    <svg
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      style={{ width: 13, height: 13, flexShrink: 0 }}
-                    >
-                      {item.icon}
-                    </svg>
-                    {item.label}
-                  </div>
-                );
-              })}
+              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, color: "var(--text-dim)", letterSpacing: "0.1em", marginTop: 2 }}>
+                Configure {activeSection.toLowerCase()} parameters and preferences
+              </div>
             </div>
 
-            {/* panels */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {/* General */}
-              <Panel
-                title="General Configuration"
-                subtitle="Core system preferences and behavior"
-                badge="MODULE 01"
-                icon={
-                  <>
-                    <circle cx="8" cy="8" r="3" />
-                    <path d="M8 1v2M8 13v2M1 8h2M13 8h2" />
-                  </>
-                }
-              >
-                <SettingRow
-                  label="Auto-start on Boot"
-                  desc="Launch J.A.R.V.I.S automatically when system initializes"
-                >
-                  <Toggle checked />
-                </SettingRow>
-                <SettingRow
-                  label="Persistent Session Memory"
-                  desc="Retain context and session data across restarts"
-                >
-                  <Toggle checked />
-                </SettingRow>
-                <SettingRow
-                  label="Telemetry Reporting"
-                  desc="Send anonymized usage data to improve system performance"
-                >
-                  <Toggle />
-                </SettingRow>
-                <SettingRow
-                  label="System Language"
-                  desc="Primary language for responses and interface"
-                >
-                  <Select
-                    options={[
-                      "ENGLISH (US)",
-                      "ENGLISH (UK)",
-                      "FRANÇAIS",
-                      "DEUTSCH",
-                      "日本語",
-                    ]}
-                    defaultValue="ENGLISH (US)"
-                  />
-                </SettingRow>
-                <SettingRow
-                  label="Timezone"
-                  desc="Reference timezone for timestamps and scheduling"
-                  noBorder
-                >
-                  <Select
-                    options={[
-                      "UTC+00:00",
-                      "UTC-05:00 EST",
-                      "UTC-08:00 PST",
-                      "UTC+05:30 IST",
-                    ]}
-                    defaultValue="UTC+00:00"
-                  />
-                </SettingRow>
-              </Panel>
+            {/* Scrollable content */}
+            <div className="scroll-area content-scroll-pad main-content-pad" style={{ flex: 1, overflowY: "auto", padding: "20px 28px" }}>
+              {renderSection()}
 
-              {/* Interface */}
-              <Panel
-                title="Interface & Display"
-                subtitle="Visual settings and UI behavior"
-                badge="MODULE 02"
-                delay="delay-1"
-                icon={
-                  <>
-                    <rect x="1" y="3" width="14" height="10" rx="1" />
-                    <path d="M5 13v2M11 13v2M3 15h10" />
-                  </>
-                }
-              >
-                <SettingRow
-                  label="Scanline Overlay"
-                  desc="Enable CRT-style scanline visual effect"
-                >
-                  <Toggle checked />
-                </SettingRow>
-                <SettingRow
-                  label="Holographic Flicker"
-                  desc="Subtle flicker animation on system elements"
-                >
-                  <Toggle checked />
-                </SettingRow>
-                <SettingRow
-                  label="Interface Opacity"
-                  desc="Adjust translucency of panel backgrounds"
-                >
-                  <Slider min={20} max={100} defaultValue={85} />
-                </SettingRow>
-                <SettingRow
-                  label="Glow Intensity"
-                  desc="Control the cyan glow strength on active elements"
-                >
-                  <Slider defaultValue={60} />
-                </SettingRow>
-                <SettingRow
-                  label="Accent Color"
-                  desc="Primary interface highlight color"
-                >
-                  <div
-                    style={{ display: "flex", gap: 8, alignItems: "center" }}
-                  >
-                    {COLORS.map((c) => (
-                      <div
-                        key={c}
-                        onClick={() => setSelectedColor(c)}
-                        className="clip-arrow-xs"
-                        style={{
-                          width: 24,
-                          height: 24,
-                          background: c,
-                          cursor: "pointer",
-                          border: `1px solid ${selectedColor === c ? "var(--cyan)" : "var(--border)"}`,
-                          transition: "all .2s",
-                          boxShadow:
-                            selectedColor === c
-                              ? "0 0 8px var(--cyan-glow)"
-                              : "none",
-                          transform:
-                            selectedColor === c ? "scale(1.1)" : "scale(1)",
-                        }}
-                      />
-                    ))}
-                  </div>
-                </SettingRow>
-                <SettingRow
-                  label="Font Scale"
-                  desc="Global text size multiplier"
-                  noBorder
-                >
-                  <Select
-                    options={[
-                      "SMALL (90%)",
-                      "DEFAULT (100%)",
-                      "LARGE (115%)",
-                      "X-LARGE (130%)",
-                    ]}
-                    defaultValue="DEFAULT (100%)"
-                  />
-                </SettingRow>
-              </Panel>
-
-              {/* AI Core */}
-              <Panel
-                title="AI Core Parameters"
-                subtitle="Neural processing and response configuration"
-                badge="MODULE 04"
-                delay="delay-2"
-                icon={
-                  <path d="M8 1L10.5 6H15L11 9.5L12.5 15L8 12L3.5 15L5 9.5L1 6H5.5z" />
-                }
-              >
-                <SettingRow
-                  label="Response Mode"
-                  desc="Balance between speed and thoroughness"
-                >
-                  <Select
-                    options={["RAPID", "BALANCED", "THOROUGH", "DEEP ANALYSIS"]}
-                    defaultValue="BALANCED"
-                  />
-                </SettingRow>
-                <SettingRow
-                  label="Confidence Threshold"
-                  desc="Minimum confidence before providing response without disclaimer"
-                >
-                  <Slider defaultValue={75} />
-                </SettingRow>
-                <SettingRow
-                  label="Contextual Memory Depth"
-                  desc="Number of previous exchanges to retain in active context"
-                >
-                  <Slider min={5} max={100} defaultValue={32} suffix="" />
-                </SettingRow>
-                <SettingRow
-                  label="Proactive Suggestions"
-                  desc="Surface relevant commands and insights unprompted"
-                >
-                  <Toggle checked />
-                </SettingRow>
-                <SettingRow
-                  label="Voice Synthesis"
-                  desc="Enable text-to-speech output for responses"
-                >
-                  <Toggle />
-                </SettingRow>
-                <SettingRow
-                  label="System Directive"
-                  desc="Custom personality directive for this instance"
-                  noBorder
-                >
-                  <input
-                    className="custom-input font-mono-custom"
-                    defaultValue="Tactical, precise, minimal verbosity"
-                    placeholder="Enter directive..."
-                  />
-                </SettingRow>
-              </Panel>
-
-              {/* Permissions */}
-              <Panel
-                title="Access Permissions"
-                subtitle="System resource authorization levels"
-                badge="MODULE 06"
-                delay="delay-3"
-                icon={
-                  <path d="M8 1L13 3V8C13 11.5 8 15 8 15S3 11.5 3 8V3L8 1Z" />
-                }
-              >
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
-                >
-                  {PERMISSIONS.map((p) => {
-                    const b = permBadge(p.status);
-                    return (
-                      <div
-                        key={p.name}
-                        className="clip-arrow-l"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                          padding: "10px 12px",
-                          background: "var(--bg-panel)",
-                          border: "1px solid var(--border)",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 28,
-                            height: 28,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            color: p.color,
-                          }}
-                        >
-                          <svg
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            style={{ width: 14, height: 14 }}
-                          >
-                            {p.icon}
-                          </svg>
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "var(--text-bright)",
-                              letterSpacing: ".5px",
-                            }}
-                          >
-                            {p.name}
-                          </div>
-                          <div
-                            style={{ fontSize: 10, color: "var(--text-dim)" }}
-                          >
-                            {p.desc}
-                          </div>
-                        </div>
-                        <div
-                          className="clip-arrow-xs font-mono-custom"
-                          style={{
-                            fontSize: 9,
-                            padding: "3px 8px",
-                            letterSpacing: 1,
-                            background: b.bg,
-                            border: `1px solid ${b.border}`,
-                            color: b.color,
-                          }}
-                        >
-                          {p.status}
-                        </div>
-                      </div>
-                    );
-                  })}
+              {/* Save bar */}
+              <div className="save-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 24, paddingTop: 16, borderTop: "1px solid rgba(0,212,255,0.1)" }}>
+                <button className="btn-secondary" onClick={() => navigate("/chat")}>◀ BACK TO INTERFACE</button>
+                <div className="save-bar-right" style={{ display: "flex", gap: 10 }}>
+                  <button className="btn-secondary">RESET DEFAULTS</button>
+                  <button className="btn-primary" onClick={save}>SAVE CHANGES ▶</button>
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                    flexWrap: "wrap",
-                    marginTop: 4,
-                  }}
-                >
-                  <Btn variant="warning">Request Elevation</Btn>
-                  <Btn variant="secondary">Audit Log</Btn>
-                </div>
-              </Panel>
-
-              {/* Danger Zone */}
-              <Panel
-                title="Danger Zone"
-                subtitle="Irreversible system operations — proceed with caution"
-                badge="CAUTION"
-                delay="delay-4"
-                dangerMode
-                icon={
-                  <>
-                    <path d="M8 1L1 14h14L8 1z" />
-                    <path d="M8 6v4M8 11v1" />
-                  </>
-                }
-              >
-                <SettingRow
-                  label="Purge Session History"
-                  desc="Permanently delete all stored conversation logs and session data"
-                >
-                  <Btn variant="danger">PURGE</Btn>
-                </SettingRow>
-                <SettingRow
-                  label="Reset to Factory Defaults"
-                  desc="Restore all configuration to initial system defaults"
-                >
-                  <Btn variant="danger">RESET</Btn>
-                </SettingRow>
-                <SettingRow
-                  label="Terminate Instance"
-                  desc="Shut down J.A.R.V.I.S and clear all active processes from memory"
-                  noBorder
-                >
-                  <Btn variant="danger">TERMINATE</Btn>
-                </SettingRow>
-              </Panel>
-            </div>
-          </div>
-
-          {/* save bar */}
-          <div
-            style={{
-              height: 48,
-              background: "var(--bg-panel)",
-              borderTop: "1px solid var(--border)",
-              display: "flex",
-              alignItems: "center",
-              padding: "0 32px",
-              gap: 12,
-              flexShrink: 0,
-            }}
-          >
-            <div
-              className="font-mono-custom"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 10,
-                color: "var(--text-dim)",
-                letterSpacing: 1,
-              }}
-            >
-              <div
-                style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: "50%",
-                  background: "var(--warning)",
-                  boxShadow: "0 0 6px var(--warning)",
-                }}
-              />
-              UNSAVED CHANGES DETECTED
-            </div>
-            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-              <Btn variant="secondary">DISCARD</Btn>
-              <Btn variant="primary">APPLY CHANGES</Btn>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* MOBILE BOTTOM TAB BAR */}
+        <div className="mobile-tab-bar">
+          <div className="mobile-tab-inner">
+            {SECTIONS.map(s => (
+              <button
+                key={s}
+                className={`mobile-tab-btn ${activeSection === s ? "active" : ""}`}
+                onClick={() => setActiveSection(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
+
+      {toast && <div className="save-toast">✓ CONFIGURATION SAVED</div>}
     </>
   );
 }
